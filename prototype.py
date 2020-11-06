@@ -11,6 +11,7 @@ psutil.cpu_percent()
 Measurement = namedtuple('Measurement', ['time', 'measurement'])
 MeasurementWindow = namedtuple('MeasurementWindow', ['time', 'measurements'])
 
+DATABASE = 'db_length_10_traffic_20_regression_2.db'
 
 def segment_into_windows(measurements: List[Measurement], window_size: timedelta):
     if not measurements:
@@ -38,7 +39,7 @@ def segment_into_windows(measurements: List[Measurement], window_size: timedelta
 
 
 def requests_per_minute(minute):
-    BASE_TRAFFIC_PER_MINUTE = 35
+    BASE_TRAFFIC_PER_MINUTE = 20
 
     traffic_multiplier = -math.cos(4 * minute / math.pi) + 2
 
@@ -46,7 +47,7 @@ def requests_per_minute(minute):
 
 
 def get_cpu_usage_measurements() -> List[Measurement]:
-    mydb = sqlite3.connect('flask_monitoringdashboard.db')
+    mydb = sqlite3.connect(DATABASE)
 
     mycursor = mydb.cursor()
     mycursor.execute('SELECT * FROM CustomGraphData ORDER BY time ASC')
@@ -58,7 +59,7 @@ def get_cpu_usage_measurements() -> List[Measurement]:
 
 
 def get_residence_times() -> List[Measurement]:
-    mydb = sqlite3.connect('flask_monitoringdashboard.db')
+    mydb = sqlite3.connect(DATABASE)
 
     mycursor = mydb.cursor()
     mycursor.execute(
@@ -90,7 +91,7 @@ def find_nearby_cpu_measurement(cpu_usage_averages: List[Measurement], time) \
 
 
 if __name__ == '__main__':
-    WINDOW_SIZE = timedelta(seconds=30)
+    WINDOW_SIZE = timedelta(seconds=10)
 
     cpu_usage_measurements = get_cpu_usage_measurements()
 
@@ -104,11 +105,14 @@ if __name__ == '__main__':
     bucket = create_empty_cpu_bucket()
 
     for measurement in residence_times:
-        nearby_cpu_usage = find_nearby_cpu_measurement(cpu_usage_averages,
-                                                       measurement.time)
+        nearby_cpu_usage = find_nearby_cpu_measurement(
+            cpu_usage_averages,
+            measurement.time
+        )
 
+        if math.isnan(nearby_cpu_usage): continue
+        
         floored_cpu_usage = math.floor(nearby_cpu_usage)
-
         bucket[floored_cpu_usage].append(measurement)
 
     results = [dict(latency=np.average([m.measurement for m in bucket[k]]) if len(
