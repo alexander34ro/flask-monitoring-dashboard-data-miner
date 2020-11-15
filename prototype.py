@@ -90,39 +90,38 @@ def create_empty_cpu_buckets():
     return buckets
 
 
-def find_nearby_cpu_measurement(cpu_usage_averages: List[Measurement], time) \
-        -> List[Measurement]:
-    diffs = [
-        dict(seconds_diff=abs((c.time - time).total_seconds()),
-             cpu_measurement=c.measurement)
-        for c in cpu_usage_averages]
+def closest_cpu_measurement(cpu_usage: List[Measurement], time) -> List[Measurement]:
+    deltas = [dict(
+        seconds_diff = abs((c.time - time).total_seconds()),
+        cpu_measurement = c.measurement
+    ) for c in cpu_usage]
+    smallest_delta = sorted(deltas, key=lambda k: k['seconds_diff'])[0]
+    cpu_usage = smallest_delta['cpu_measurement']
 
-    return sorted(diffs, key=lambda k: k['seconds_diff'])[0]['cpu_measurement']
+    return int(round(cpu_usage))
+
+
+def populate_buckets(residence_times, buckets, cpu_usage):
+    for measurement in residence_times:
+        cpu_measurement = closest_cpu_measurement(cpu_usage, measurement.time)
+        buckets[cpu_measurement].append(measurement)
+
+    return buckets
 
 
 if __name__ == '__main__':
-    # Initialize CPU usage buckets
-    bucket = create_empty_cpu_buckets()
-    # Load and process CPU data
+    # Load and process CPU data to get average CPU usage
     cpu_usage_measurements = load_cpu_usage()
     cpu_usage_averages = average_for_windows(cpu_usage_measurements)
-    # Load and process request data
+    # Load request data
     residence_times = load_residence_times()
+    # Create CPU usage buckets
+    buckets = create_empty_cpu_buckets()
+    buckets = populate_buckets(residence_times, buckets, cpu_usage_averages)
 
-    for measurement in residence_times:
-        nearby_cpu_usage = find_nearby_cpu_measurement(
-            cpu_usage_averages,
-            measurement.time
-        )
-
-        if math.isnan(nearby_cpu_usage): continue
-        
-        floored_cpu_usage = math.floor(nearby_cpu_usage)
-        bucket[floored_cpu_usage].append(measurement)
-
-    results = [dict(latency=np.average([m.measurement for m in bucket[k]]) if len(
-        bucket[k]) > 0 else None, cpu_usage=k) for k in
-               bucket.keys()]
+    results = [dict(latency=np.average([m.measurement for m in buckets[k]]) if len(
+        buckets[k]) > 0 else None, cpu_usage=k) for k in
+               buckets.keys()]
 
     results = [c for c in sorted(results, key=lambda r: r['cpu_usage']) if c['latency']]
     cpu_usages = [r['cpu_usage'] for r in results]
