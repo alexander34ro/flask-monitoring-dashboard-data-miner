@@ -26,6 +26,7 @@ def load_db_cursor():
 def load_measurements_from_db(query):
     cursor = load_db_cursor()
     cursor.execute(query)
+
     return cursor.fetchall()
 
 
@@ -81,6 +82,7 @@ def average_for_windows(measurements: List[Measurement]):
 
 def requests_per_minute(minute):
     traffic_multiplier = -math.cos(4 * minute / math.pi) + 2
+
     return traffic_multiplier * BASE_TRAFFIC_PER_MINUTE
 
 
@@ -114,6 +116,12 @@ def populate_buckets(residence_times, buckets, cpu_usage):
     return buckets
 
 
+def average_latency_for_bucket(buckets, cpu):
+    if (len(buckets[cpu]) == 0): return None
+
+    return np.average([m.measurement for m in buckets[cpu]])
+
+
 if __name__ == '__main__':
     # Load and process CPU data to get average CPU usage
     cpu_usage_measurements = load_cpu_usage()
@@ -124,9 +132,10 @@ if __name__ == '__main__':
     buckets = create_empty_cpu_buckets()
     buckets = populate_buckets(residence_times, buckets, cpu_usage_averages)
 
-    results = [dict(latency=np.average([m.measurement for m in buckets[k]]) if len(
-        buckets[k]) > 0 else None, cpu_usage=k) for k in
-               buckets.keys()]
+    results = [dict(
+        latency = average_latency_for_bucket(buckets, cpu),
+        cpu_usage = cpu
+    ) for cpu in buckets.keys()]
 
     results = [c for c in sorted(results, key=lambda r: r['cpu_usage']) if c['latency']]
     cpu_usages = [r['cpu_usage'] for r in results]
