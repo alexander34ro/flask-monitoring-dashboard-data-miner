@@ -87,15 +87,20 @@ def requests_per_minute(minute):
 def create_empty_cpu_buckets():
     buckets = {}
     for i in range(100): buckets[i + 1] = []
+
     return buckets
+
+
+def time_difference(time1, time2):
+    return abs((time1 - time2).total_seconds())
 
 
 def closest_cpu_measurement(cpu_usage: List[Measurement], time) -> List[Measurement]:
     deltas = [dict(
-        seconds_diff = abs((c.time - time).total_seconds()),
+        time_diff = time_difference(time, c.time),
         cpu_measurement = c.measurement
     ) for c in cpu_usage]
-    smallest_delta = sorted(deltas, key=lambda k: k['seconds_diff'])[0]
+    smallest_delta = sorted(deltas, key=lambda k: k['time_diff'])[0]
     cpu_usage = smallest_delta['cpu_measurement']
 
     return int(round(cpu_usage))
