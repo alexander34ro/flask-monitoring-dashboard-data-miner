@@ -55,28 +55,21 @@ def load_residence_times() -> List[Measurement]:
     ) for d in resultset]
 
 
+def segment_into_windows(measurements: List[Measurement]):
+    if not measurements: return []
 
-def segment_into_windows(measurements: List[Measurement], window_size: timedelta):
-    if not measurements:
-        return []
-
-    window_start = measurements[0].time
-
-    i = 0
-    results = []
-    while i < len(measurements):
-        measurements_in_window = []
-
-        while i < len(measurements) and measurements[i].time < window_start + window_size:
-            measurements_in_window.append(measurements[i])
-            i = i + 1
-
-        results.append(MeasurementWindow(
-            time=window_start + window_size / 2,
-            measurements=measurements_in_window
-        ))
-        i = i + 1
-        window_start = window_start + window_size
+    measurement_delta = measurements[1].time - measurements[0].time
+    per_window = int(round(WINDOW_SIZE / measurement_delta))
+    count = len(measurements) / per_window
+    
+    windows = np.array_split(np.array(measurements), count)
+    results = [MeasurementWindow(
+        time=window[0][0] + WINDOW_SIZE / 2,
+        measurements = [Measurement(
+            time = w[0],
+            measurement = w[1]
+        ) for w in window]
+    ) for window in windows]
 
     return results
 
@@ -107,11 +100,10 @@ def find_nearby_cpu_measurement(cpu_usage_averages: List[Measurement], time) \
 
 
 if __name__ == '__main__':
+    # Load and process CPU data
     cpu_usage_measurements = load_cpu_usage()
-    print(cpu_usage_measurements)
+    cpu_usage_segments = segment_into_windows(cpu_usage_measurements)
 
-    cpu_usage_segments = segment_into_windows(cpu_usage_measurements,
-                                              window_size=WINDOW_SIZE)
     cpu_usage_averages = [Measurement(time=segment.time, measurement=np.average(
         [m.measurement for m in segment.measurements])) for segment in cpu_usage_segments]
 
