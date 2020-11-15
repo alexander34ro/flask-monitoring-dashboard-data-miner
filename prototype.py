@@ -55,20 +55,25 @@ def load_residence_times() -> List[Measurement]:
     ) for d in resultset]
 
 
-def segment_into_windows(measurements: List[Measurement]):
+def average_time_from_window(window):
+    return window[0][0] + WINDOW_SIZE / 2
+
+
+def average_cpu_from_window(window):
+    return np.average([w[1] for w in window])
+
+
+def average_for_windows(measurements: List[Measurement]):
     if not measurements: return []
 
     measurement_delta = measurements[1].time - measurements[0].time
     per_window = int(round(WINDOW_SIZE / measurement_delta))
     count = len(measurements) / per_window
     
-    windows = np.array_split(np.array(measurements), count)
-    results = [MeasurementWindow(
-        time=window[0][0] + WINDOW_SIZE / 2,
-        measurements = [Measurement(
-            time = w[0],
-            measurement = w[1]
-        ) for w in window]
+    windows = np.array_split(measurements, count)
+    results = [Measurement(
+        time = average_time_from_window(window),
+        measurement = average_cpu_from_window(window)
     ) for window in windows]
 
     return results
@@ -76,17 +81,13 @@ def segment_into_windows(measurements: List[Measurement]):
 
 def requests_per_minute(minute):
     traffic_multiplier = -math.cos(4 * minute / math.pi) + 2
-
     return traffic_multiplier * BASE_TRAFFIC_PER_MINUTE
 
 
-def create_empty_cpu_bucket():
-    bucket = {}
-
-    for i in range(100):
-        bucket[i + 1] = []
-
-    return bucket
+def create_empty_cpu_buckets():
+    buckets = {}
+    for i in range(100): buckets[i + 1] = []
+    return buckets
 
 
 def find_nearby_cpu_measurement(cpu_usage_averages: List[Measurement], time) \
@@ -100,16 +101,13 @@ def find_nearby_cpu_measurement(cpu_usage_averages: List[Measurement], time) \
 
 
 if __name__ == '__main__':
+    # Initialize CPU usage buckets
+    bucket = create_empty_cpu_buckets()
     # Load and process CPU data
     cpu_usage_measurements = load_cpu_usage()
-    cpu_usage_segments = segment_into_windows(cpu_usage_measurements)
-
-    cpu_usage_averages = [Measurement(time=segment.time, measurement=np.average(
-        [m.measurement for m in segment.measurements])) for segment in cpu_usage_segments]
-
+    cpu_usage_averages = average_for_windows(cpu_usage_measurements)
+    # Load and process request data
     residence_times = load_residence_times()
-
-    bucket = create_empty_cpu_bucket()
 
     for measurement in residence_times:
         nearby_cpu_usage = find_nearby_cpu_measurement(
