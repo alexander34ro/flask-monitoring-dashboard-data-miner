@@ -7,11 +7,54 @@ from typing import List
 import math
 import psutil
 
-psutil.cpu_percent()
 Measurement = namedtuple('Measurement', ['time', 'measurement'])
 MeasurementWindow = namedtuple('MeasurementWindow', ['time', 'measurements'])
 
 DATABASE = 'db_length_10_traffic_20_regression_2.db'
+WINDOW_SIZE = timedelta(seconds=20)
+BASE_TRAFFIC_PER_MINUTE = 20
+
+#####
+# DB Management
+#####
+
+
+def load_db_cursor():
+    return sqlite3.connect(DATABASE).cursor()
+
+
+def load_measurements_from_db(query):
+    cursor = load_db_cursor()
+    cursor.execute(query)
+    return cursor.fetchall()
+
+
+def format_date(date):
+    return datetime.strptime(date, '%Y-%m-%d %H:%M:%S.%f')
+
+
+def load_cpu_usage() -> List[Measurement]:
+    resultset = load_measurements_from_db(
+        'SELECT * FROM CustomGraphData ORDER BY time ASC'
+    )
+
+    return [Measurement(
+        time=format_date(d[2]),
+        measurement=d[3]
+    ) for d in resultset]
+
+
+def load_residence_times() -> List[Measurement]:
+    resultset = load_measurements_from_db(
+        'SELECT duration, time_requested FROM Request ORDER BY time_requested ASC'
+    )
+
+    return [Measurement(
+        time=format_date(d[1]),
+        measurement=d[0]
+    ) for d in resultset]
+
+
 
 def segment_into_windows(measurements: List[Measurement], window_size: timedelta):
     if not measurements:
@@ -39,36 +82,9 @@ def segment_into_windows(measurements: List[Measurement], window_size: timedelta
 
 
 def requests_per_minute(minute):
-    BASE_TRAFFIC_PER_MINUTE = 20
-
     traffic_multiplier = -math.cos(4 * minute / math.pi) + 2
 
     return traffic_multiplier * BASE_TRAFFIC_PER_MINUTE
-
-
-def get_cpu_usage_measurements() -> List[Measurement]:
-    mydb = sqlite3.connect(DATABASE)
-
-    mycursor = mydb.cursor()
-    mycursor.execute('SELECT * FROM CustomGraphData ORDER BY time ASC')
-
-    resultset = mycursor.fetchall()
-
-    return [Measurement(time=datetime.strptime(d[2], '%Y-%m-%d %H:%M:%S.%f'),
-                        measurement=d[3]) for d in resultset]
-
-
-def get_residence_times() -> List[Measurement]:
-    mydb = sqlite3.connect(DATABASE)
-
-    mycursor = mydb.cursor()
-    mycursor.execute(
-        'SELECT duration, time_requested FROM Request ORDER BY time_requested ASC')
-
-    resultset = mycursor.fetchall()
-
-    return [Measurement(time=datetime.strptime(d[1], '%Y-%m-%d %H:%M:%S.%f'),
-                        measurement=d[0]) for d in resultset]
 
 
 def create_empty_cpu_bucket():
@@ -91,16 +107,15 @@ def find_nearby_cpu_measurement(cpu_usage_averages: List[Measurement], time) \
 
 
 if __name__ == '__main__':
-    WINDOW_SIZE = timedelta(seconds=10)
-
-    cpu_usage_measurements = get_cpu_usage_measurements()
+    cpu_usage_measurements = load_cpu_usage()
+    print(cpu_usage_measurements)
 
     cpu_usage_segments = segment_into_windows(cpu_usage_measurements,
                                               window_size=WINDOW_SIZE)
     cpu_usage_averages = [Measurement(time=segment.time, measurement=np.average(
         [m.measurement for m in segment.measurements])) for segment in cpu_usage_segments]
 
-    residence_times = get_residence_times()
+    residence_times = load_residence_times()
 
     bucket = create_empty_cpu_bucket()
 
