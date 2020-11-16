@@ -8,16 +8,15 @@ import math
 import psutil
 
 Measurement = namedtuple('Measurement', ['time', 'measurement'])
-MeasurementWindow = namedtuple('MeasurementWindow', ['time', 'measurements'])
 
-DATABASE = 'db_length_10_traffic_20_regression_2.db'
-WINDOW_SIZE = timedelta(seconds=20)
+DATABASE = 'db_length_10_traffic_20_regression_0.db'
+# DATABASE = 'flask_monitoringdashboard.db'
+WINDOW_SIZE = timedelta(seconds=10)
 BASE_TRAFFIC_PER_MINUTE = 20
 
 #####
 # DB Management
 #####
-
 
 def load_db_cursor():
     return sqlite3.connect(DATABASE).cursor()
@@ -55,6 +54,9 @@ def load_residence_times() -> List[Measurement]:
         measurement=d[0]
     ) for d in resultset]
 
+#####
+# CPU data processing
+#####
 
 def average_time_from_window(window):
     return window[0][0] + WINDOW_SIZE / 2
@@ -80,11 +82,9 @@ def average_for_windows(measurements: List[Measurement]):
     return results
 
 
-def requests_per_minute(minute):
-    traffic_multiplier = -math.cos(4 * minute / math.pi) + 2
-
-    return traffic_multiplier * BASE_TRAFFIC_PER_MINUTE
-
+#####
+# Request data processing
+#####
 
 def create_empty_cpu_buckets():
     buckets = {}
@@ -119,8 +119,19 @@ def populate_buckets(residence_times, buckets, cpu_usage):
 def average_latency_for_bucket(buckets, cpu):
     if (len(buckets[cpu]) == 0): return None
 
-    return np.average([m.measurement for m in buckets[cpu]])
+    measured_latencies = [m.measurement for m in buckets[cpu]]
 
+    return np.average(measured_latencies)
+
+
+def requests_per_minute(minute):
+    traffic_multiplier = -math.cos(4 * minute / math.pi) + 2
+
+    return traffic_multiplier * BASE_TRAFFIC_PER_MINUTE
+
+#####
+# Main
+#####
 
 if __name__ == '__main__':
     # Load and process CPU data to get average CPU usage
@@ -131,16 +142,19 @@ if __name__ == '__main__':
     # Create CPU usage buckets
     buckets = create_empty_cpu_buckets()
     buckets = populate_buckets(residence_times, buckets, cpu_usage_averages)
-
-    results = [dict(
+    # Average request latency by CPU usage
+    latency_per_bucket = [dict(
         latency = average_latency_for_bucket(buckets, cpu),
         cpu_usage = cpu
     ) for cpu in buckets.keys()]
+    average_latency = [c for c in sorted(
+        latency_per_bucket, key=lambda r: r['cpu_usage']) if c['latency'] and c['latency'] > 5]
+    print(average_latency)
 
-    results = [c for c in sorted(results, key=lambda r: r['cpu_usage']) if c['latency']]
-    cpu_usages = [r['cpu_usage'] for r in results]
-    latencies = [r['latency'] for r in results]
+    cpu_usages = [r['cpu_usage'] for r in average_latency]
+    latencies = [r['latency'] for r in average_latency]
 
+    # Plot request frequency over time
     plt.figure()
     plt.subplot(2, 1, 1)
     times = np.arange(0, 10, 1 / 60)
@@ -160,8 +174,7 @@ if __name__ == '__main__':
     plt.title('CPU usage over time')
     plt.xlabel('Time in seconds since start simulation')
     start = cpu_usage_averages[0].time
-    plt.plot([(measurement.time - start).total_seconds() for measurement in
-              cpu_usage_averages],
+    plt.plot([(measurement.time - start).total_seconds() for measurement in cpu_usage_averages],
              [measurement.measurement for measurement in cpu_usage_averages])
 
     # Plot CPU usage versus latency
@@ -177,8 +190,9 @@ if __name__ == '__main__':
 
     # Plot CPU usage vs service time
     plt.figure()
-    service_times = [c['latency'] * (1 - c['cpu_usage'] / 100) for c in results]
-    plt.plot([c['cpu_usage'] for c in results], service_times)
+    service_times = [c['latency'] * (1 - c['cpu_usage'] / 100)
+                     for c in average_latency]
+    plt.plot([c['cpu_usage'] for c in average_latency], service_times)
     plt.xlabel('CPU usage')
     plt.ylabel('Service time')
     plt.axhline(y=np.median(service_times), color='r', linestyle='-',
