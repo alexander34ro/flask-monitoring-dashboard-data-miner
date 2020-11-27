@@ -8,12 +8,11 @@ const http = require('http');
 // const URL = 'https://flask-monitoring-regressions.herokuapp.com/';
 const URL = 'http://3.121.115.15:8000/';
 const SIMULATION_LENGTH_IN_MINUTES = 10;
-const BASE_TRAFFIC_PER_MINUTE = 30;
+const BASE_TRAFFIC_PER_MINUTE = 100;
 const TICKS_PER_SECONDS = 1000;
 
 let REGRESSION_LEVEL = 0;
 let DATE = new Date().toISOString().slice(0, 10);
-let DB_NAME = `db_${DATE}_length_${SIMULATION_LENGTH_IN_MINUTES}_traffic_${BASE_TRAFFIC_PER_MINUTE}_regression_${REGRESSION_LEVEL}.db`;
 
 function now() { return new moment(); }
 function secondsSince(time) { return now().diff(time, 'seconds'); }
@@ -42,9 +41,9 @@ function requestsPerMinute(minute) {
 }
 
 (async () => {
-    for (let index = 0; index < 4; index++) {
+    for (let index = 2; index < 3; index++) {
         REGRESSION_LEVEL = index;
-        DB_NAME = `db_${DATE}_length_${SIMULATION_LENGTH_IN_MINUTES}_traffic_${BASE_TRAFFIC_PER_MINUTE}_regression_${REGRESSION_LEVEL}.db`;
+        let DB_NAME = `db_${DATE}_A_length_${SIMULATION_LENGTH_IN_MINUTES}_traffic_${BASE_TRAFFIC_PER_MINUTE}_regression_${REGRESSION_LEVEL}.db`;
 
         console.log(`Setting the regression level...`);
         await axios.get(URL + `set_regression_level/${REGRESSION_LEVEL}`)

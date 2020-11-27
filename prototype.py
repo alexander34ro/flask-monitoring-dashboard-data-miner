@@ -9,10 +9,11 @@ import psutil
 
 Measurement = namedtuple('Measurement', ['time', 'measurement'])
 
-DATABASE = 'db_2020-11-27_length_20_traffic_30_regression_3.db'
+DATABASE = 'db_2020-11-27_A_length_10_traffic_100_regression_1.db'
 # DATABASE = 'flask_monitoringdashboard.db'
 WINDOW_SIZE = timedelta(seconds=10)
-BASE_TRAFFIC_PER_MINUTE = 30
+BASE_TRAFFIC_PER_MINUTE = 100
+LENGTH = 10
 
 #####
 # DB Management
@@ -159,7 +160,7 @@ if __name__ == '__main__':
     # Plot request frequency over time
     plt.figure()
     plt.subplot(2, 1, 1)
-    times = np.arange(0, 10, 1 / 60)
+    times = np.arange(0, LENGTH, 1 / 60)
     rm = [requests_per_minute(t) for t in times]
     plt.plot([t*60 for t in times], rm)
     plt.axhline(y=min(rm), linestyle='--', label='Minimum RPM')
@@ -189,6 +190,8 @@ if __name__ == '__main__':
     plt.xlabel('CPU Usage')
     plt.ylabel('Latency')
     plt.legend()
+    plt.xlim(-5.0, 105.0)
+    plt.ylim(0.0, 600.0)
 
     # Plot CPU usage vs service time
     plt.figure()
@@ -200,5 +203,7 @@ if __name__ == '__main__':
     plt.axhline(y=np.median(service_times), color='r', linestyle='-',
                 label='Median service time')
     plt.legend()
-
+    plt.xlim(-5.0, 105.0)
+    plt.ylim(0.0, 600.0)
+    
     plt.show()
