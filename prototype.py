@@ -9,10 +9,10 @@ import psutil
 
 Measurement = namedtuple('Measurement', ['time', 'measurement'])
 
-DATABASE = 'db_length_10_traffic_20_regression_0.db'
+DATABASE = 'db_2020-11-27_length_20_traffic_30_regression_3.db'
 # DATABASE = 'flask_monitoringdashboard.db'
 WINDOW_SIZE = timedelta(seconds=10)
-BASE_TRAFFIC_PER_MINUTE = 20
+BASE_TRAFFIC_PER_MINUTE = 30
 
 #####
 # DB Management
@@ -72,6 +72,7 @@ def average_for_windows(measurements: List[Measurement]):
     measurement_delta = measurements[1].time - measurements[0].time
     per_window = int(round(WINDOW_SIZE / measurement_delta))
     count = len(measurements) / per_window
+    print(measurement_delta, per_window, count)
     
     windows = np.array_split(measurements, count)
     results = [Measurement(
@@ -88,7 +89,7 @@ def average_for_windows(measurements: List[Measurement]):
 
 def create_empty_cpu_buckets():
     buckets = {}
-    for i in range(100): buckets[i + 1] = []
+    for i in range(101): buckets[i] = []
 
     return buckets
 
@@ -139,6 +140,7 @@ if __name__ == '__main__':
     cpu_usage_averages = average_for_windows(cpu_usage_measurements)
     # Load request data
     residence_times = load_residence_times()
+    print(len(residence_times))
     # Create CPU usage buckets
     buckets = create_empty_cpu_buckets()
     buckets = populate_buckets(residence_times, buckets, cpu_usage_averages)
@@ -148,7 +150,7 @@ if __name__ == '__main__':
         cpu_usage = cpu
     ) for cpu in buckets.keys()]
     average_latency = [c for c in sorted(
-        latency_per_bucket, key=lambda r: r['cpu_usage']) if c['latency'] and c['latency'] > 5]
+        latency_per_bucket, key=lambda r: r['cpu_usage']) if c['latency'] and c['latency'] > -1]
     print(average_latency)
 
     cpu_usages = [r['cpu_usage'] for r in average_latency]
@@ -198,6 +200,5 @@ if __name__ == '__main__':
     plt.axhline(y=np.median(service_times), color='r', linestyle='-',
                 label='Median service time')
     plt.legend()
-    # plt.x
 
     plt.show()
