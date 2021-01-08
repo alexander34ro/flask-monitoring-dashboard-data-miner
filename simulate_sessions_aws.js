@@ -8,7 +8,7 @@ const http = require('http');
 // const URL = 'https://flask-monitoring-regressions.herokuapp.com/';
 const URL = 'http://3.121.115.15:8000/';
 const SIMULATION_LENGTH_IN_MINUTES = 10;
-const BASE_TRAFFIC_PER_MINUTE = 100;
+const BASE_TRAFFIC_PER_MINUTE = 200;
 const TICKS_PER_SECONDS = 1000;
 
 let REGRESSION_LEVEL = 0;
@@ -41,8 +41,8 @@ function requestsPerMinute(minute) {
 }
 
 (async () => {
-    for (let index = 2; index < 3; index++) {
-        REGRESSION_LEVEL = index;
+    for (let regression = 0; regression < 1; regression++) {
+        REGRESSION_LEVEL = regression;
         let DB_NAME = `db_${DATE}_A_length_${SIMULATION_LENGTH_IN_MINUTES}_traffic_${BASE_TRAFFIC_PER_MINUTE}_regression_${REGRESSION_LEVEL}.db`;
 
         console.log(`Setting the regression level...`);
@@ -52,6 +52,7 @@ function requestsPerMinute(minute) {
         console.log(`Clearing the Database...`);
         await axios.get(URL + `clear_db`)
         console.log(`Database clear.`);
+        console.log(`Data will be saved in ${DB_NAME}`)
 
         console.log(`Starting session of length: ${SIMULATION_LENGTH_IN_MINUTES} minutes...`);
         const simulationStartTime = now();
