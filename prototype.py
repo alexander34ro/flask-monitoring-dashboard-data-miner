@@ -10,15 +10,16 @@ import psutil
 Measurement = namedtuple('Measurement', ['time', 'measurement'])
 
 # DATABASE = 'flask_monitoringdashboard.db'
-DATE = '2020-11-28'
+DATE = '2021-01-08'
 SERVER = 'A'
 LENGTH = 10
-BASE_TRAFFIC_PER_MINUTE = 200
+BASE_TRAFFIC_PER_MINUTE = 100
 REGRESSION_LEVEL = 2
-WINDOW = 60
+REGRESSION_MAGNITUDE = 1
+WINDOW = 10
 WINDOW_SIZE = timedelta(seconds=WINDOW)
 
-DATABASE = 'db_' + DATE + '_' + SERVER + '_length_' + str(LENGTH) + '_traffic_' + str(BASE_TRAFFIC_PER_MINUTE) + '_regression_' + str(REGRESSION_LEVEL) + '.db'
+DATABASE = 'db_' + DATE + '_' + SERVER + '_length_' + str(LENGTH) + '_traffic_' + str(BASE_TRAFFIC_PER_MINUTE) + '_regression_' + str(REGRESSION_LEVEL) + "_" + str(REGRESSION_MAGNITUDE) + '.db'
 
 #####
 # DB Management
@@ -200,8 +201,8 @@ if __name__ == '__main__':
     plt.ylabel('Latency')
     plt.legend()
     plt.xlim(0, 100)
-    MIN_LATENCY = 100.0
-    MAX_LATENCY = 300.0
+    MIN_LATENCY = 0.0
+    MAX_LATENCY = 500.0
     plt.ylim(MIN_LATENCY, MAX_LATENCY)
     plt.savefig(SERVER + '_traffic_' + str(BASE_TRAFFIC_PER_MINUTE) + '_window_' + str(WINDOW) + '_regression_' + str(REGRESSION_LEVEL) + '_latency' + '.png')
 
@@ -219,7 +220,7 @@ if __name__ == '__main__':
     plt.legend()
     plt.xlim(0, 100)
     MIN_LATENCY = 0.0
-    MAX_LATENCY = 250.0
+    MAX_LATENCY = 350.0
     plt.ylim(MIN_LATENCY, MAX_LATENCY)
     plt.savefig(SERVER + '_traffic_' + str(BASE_TRAFFIC_PER_MINUTE) + '_window_' +
                 str(WINDOW) + '_regression_' +
